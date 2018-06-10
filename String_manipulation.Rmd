@@ -1,0 +1,115 @@
+---
+title: "String Manipulation"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages, include=FALSE}
+library(stringi)
+library(stringr)
+library(rebus)
+```
+
+## Description
+
+Package stingr provides many tools for manipulation with strings. For example we can count the number of lines each character has in a play. In other words we are interested in a character that appears the most often. 
+
+We will work on a play by Oscar Wild - 'The Importance of Being Earnest'. The play is stored in a .txt file and we will use stringi package for reading the text. Stringi package has a function stri_read_lines() that is a great alternative to base function readLines().
+
+## Reading the play
+
+```{r whole_play}
+whole_play <- stri_read_lines("importance-of-being-earnest.txt")
+head(whole_play)
+
+str(whole_play)
+```
+
+As we can see this is a character vector of length 3495. To get the feeling of what is in a file I recommend examining it in the text file. We see there is some extra text before and after both 'START' and 'END' of the project, which we can rid of. Thus, let's find the rows numbers of these lines.Function str_detect() returns a logical vector for which we can get the number of TRUE by passing it into function which().
+
+```{r start}
+start_vector <- str_detect(whole_play, fixed("START OF THE PROJECT"))
+start <- which(start_vector)
+start
+
+```
+
+Same we can do for end line.
+```{r end}
+end <- which(str_detect(whole_play, fixed("END OF THE PROJECT")))
+end
+
+```
+
+Now lets subset only play.
+
+```{r play}
+play <- whole_play[(start+1):(end-1)]
+play[100:105]
+
+```
+
+Play is divided into intro and main part. Main part starts where 'FIRST ACT' begins. Everything above is intro part.
+
+```{r start_line}
+start_line <- which(str_detect(play,'FIRST ACT'))
+intro_index <- 1:(start_line-1)
+intro_text <- play[intro_index]
+main_text <- play[-intro_index]
+writeLines(main_text[10:20])
+```
+
+We can see that there are many empty lines which can be removed with the help of stringi function stri_isempty().
+
+
+
+```{r removing lines}
+empty <- stri_isempty(main_text)
+play_lines <- main_text[!empty]
+writeLines(play_lines[10:20])
+```
+
+
+Now, it is turn to count which character appears the most often. We see that sentences start with name followed by dot. Although this approach won't be successful we will first extract names with pattern. We can use regular expressions or rebus package for making pattern. Pattern will match the start of the line, followed by one or more capitalized word characters, then a full stop.
+
+
+```{r pattern1}
+pattern_1 <- START %R% ascii_upper() %R% one_or_more(WRD) %R% DOT
+#str_view(play_lines, pattern_1, match = TRUE)
+```
+
+
+Let's now subset these lines and after that extract names.
+
+
+```{r extract}
+lines <- str_subset(play_lines, pattern_1)
+lines[1:5]
+names <- str_extract(lines,pattern_1)
+names[1:5]
+```
+
+Let's see unique values.
+
+```{r extract_names}
+unique(names)
+```
+
+Unfortunately, we can see that 'Mr.', 'University.' and 'London.' were extracted too. 
+
+Another aproach would be to try to figure out names from this output or to try to find in the intro part names of characters. We will put these names in the vector characters.
+
+```{r characters}
+characters <- c("Algernon", "Jack", "Lane", "Cecily", "Gwendolen", "Chasuble", 
+  "Merriman", "Lady Bracknell", "Miss Prism")
+pattern_2 <- START %R% or1(characters) %R% DOT
+lines <- str_subset(play_lines, pattern_2)
+who <- str_extract(lines, pattern_2)
+unique(who)
+table(who)
+```
+
+We can see that Algernon and Cecily got the most of lines.
+
