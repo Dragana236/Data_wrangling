@@ -1,0 +1,93 @@
+---
+title: "Cleaning Data"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(stringr)
+```
+
+## Dataset
+
+Dataset 'who' from tidyr package contains studies of tuberculosis patients, sorted according to country, year, age of patient, sex, type of treatment. Source is World Health Organization Global Tuberculosis Report, which is available at: <http://www.who.int/tb/country/data/download/en/>.
+
+```{r who}
+tidyr::who
+```
+
+As we can see data is nontidy, where iso2 and iso3 represent 2 and 3 letter ISO country codes. Columns such as new_sp_m014 and new_sp_m1524 are actually values that contain joined information like 'new', 'sp' - code for method of diagnosis, 'm' is code for gender and '014' code for age group. 
+
+## Cleaning
+
+
+Since columns new_sp_m014:newrel_f65 present values to a one column we are going to use tidyr function gather() to gather them into one column.
+
+```{r who1}
+who1=who%>%
+  gather(
+    new_sp_m014:newrel_f65, key = 'code',
+    value='value',
+    na.rm=TRUE
+  )
+```
+
+If we want to see how many unique values are in a column we can use count() function from dplyr package.
+
+```{r who2}
+who1%>%
+  count(code)
+```
+
+Since the names are pretty uncosistent - instead of new_rel we have newrel - we will have to convert them into same name. Here we will use str_replace() function from stringr package. 
+
+```{r who3, warning=FALSE}
+who2=who1%>%
+  mutate(code=str_replace(code, 'newrel','new_rel'))
+```
+Values in column code can be splitted which can be done with separate() function from tidyr package. 
+
+```{r who4, warning=FALSE}
+who3=who2%>%
+  separate(code,c('new','type','sexage'),sep="_")
+who3
+```
+We can omit column new since it has only one value 'new'. Also this can be done with columns iso2 and iso3, since informations about countries are already in column country
+
+```{r who5, warning=FALSE}
+who3%>%
+  count(new)
+```
+
+```{r who6, warning=FALSE}
+who4=who3%>%
+  select(-new,-iso2,-iso3)
+who4
+```
+
+Finally we can split sexage column into two - sex and age.
+
+```{r who7, warning=FALSE}
+who5=who4%>%
+  separate(sexage,c('sex','age'),sep=1)
+who5
+```
+
+Now, the dataset is much more cleaner.
+
+Also, all this chunks of code could've been written in one line with so called pipe operator %>%.
+
+```{r who8, warning=FALSE}
+who%>%
+  gather(new_sp_m014:newrel_f65, key = 'code', value='value', na.rm=TRUE)%>%
+  mutate(code=str_replace(code,'newrel','new_rel'))%>%
+  separate(code,c('new','type','sexage'),sep="_")%>%
+  select(-new,-iso2,-iso3)%>%
+  separate(sexage,c('sex','age'),sep=1)
+```
